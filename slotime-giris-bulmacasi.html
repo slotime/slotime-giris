@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Slotime – Oyun Bulmacası</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #f0c040;
+    --gold2: #ffdf70;
+    --dark: #0a0710;
+    --dark2: #110e1c;
+    --purple: #2a1a4e;
+    --purple2: #3d2470;
+    --accent: #ff4fa3;
+    --accent2: #ff80c0;
+    --green: #00e88a;
+    --red: #ff3a5c;
+    --glow: 0 0 18px #f0c04088, 0 0 40px #f0c04033;
+    --glow-accent: 0 0 12px #ff4fa388;
+    --glow-green: 0 0 12px #00e88a88;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--dark);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Animated BG */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% 0%, #2a1a4e88 0%, transparent 70%),
+      radial-gradient(ellipse 50% 30% at 80% 80%, #ff4fa322 0%, transparent 60%),
+      radial-gradient(ellipse 40% 25% at 10% 70%, #f0c04015 0%, transparent 60%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .reel-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    opacity: 0.06;
+  }
+  .reel-bg span {
+    position: absolute;
+    font-size: 2.5rem;
+    animation: floatSym linear infinite;
+  }
+  @keyframes floatSym {
+    from { transform: translateY(110vh) rotate(0deg); opacity: 0.5; }
+    to   { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+  }
+
+  /* HEADER */
+  header {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 20px 10px;
+  }
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 2.8rem;
+    letter-spacing: 4px;
+    color: var(--gold);
+    text-shadow: var(--glow);
+    line-height: 1;
+  }
+  .logo span { color: #fff; }
+  .subtitle {
+    font-size: 0.95rem;
+    letter-spacing: 3px;
+    color: #b09fd8;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .tagline {
+    margin-top: 6px;
+    font-size: 0.78rem;
+    color: var(--accent2);
+    letter-spacing: 2px;
+    opacity: 0.85;
+  }
+
+  /* MAIN CARD */
+  .game-card {
+    position: relative;
+    z-index: 10;
+    background: linear-gradient(145deg, #16102a, #1e1538);
+    border: 1.5px solid #3d2470;
+    border-radius: 20px;
+    padding: 30px 28px 28px;
+    max-width: 560px;
+    width: calc(100% - 24px);
+    margin: 18px 12px 30px;
+    box-shadow: 0 8px 40px #00000080, 0 0 0 1px #ffffff08 inset;
+  }
+
+  .section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::before, .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, #f0c04055, transparent);
+  }
+
+  /* WORD GRID */
+  .grid-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+  .grid-row {
+    display: flex;
+    gap: 6px;
+  }
+  .cell {
+    width: 46px;
+    height: 46px;
+    border: 1.5px solid #3d2470;
+    border-radius: 8px;
+    background: #0e0a1e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+    user-select: none;
+  }
+  .cell.hint-cell {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: #1e1305;
+    box-shadow: 0 0 10px #f0c04033;
+  }
+  .cell.correct {
+    background: #0a2e1a;
+    border-color: var(--green);
+    color: var(--green);
+    box-shadow: var(--glow-green);
+    animation: pop 0.3s ease;
+  }
+  .cell.wrong {
+    background: #2a0a10;
+    border-color: var(--red);
+    color: var(--red);
+    animation: shake 0.4s ease;
+  }
+  .cell.partial {
+    background: #1f1500;
+    border-color: var(--gold);
+    color: var(--gold);
+    box-shadow: 0 0 8px #f0c04055;
+  }
+  .cell.flip {
+    animation: flipCell 0.5s ease forwards;
+  }
+  @keyframes flipCell {
+    0%   { transform: rotateX(0); }
+    50%  { transform: rotateX(90deg); }
+    100% { transform: rotateX(0); }
+  }
+  @keyframes pop {
+    0%   { transform: scale(0.85); }
+    60%  { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25%      { transform: translateX(-5px); }
+    75%      { transform: translateX(5px); }
+  }
+  .cell.empty-anim {
+    animation: emptyShake 0.3s ease;
+  }
+  @keyframes emptyShake {
+    0%,100% { border-color: #3d2470; }
+    50%      { border-color: var(--red); box-shadow: 0 0 8px var(--red); }
+  }
+
+  /* CLUE AREA */
+  .clue-box {
+    background: linear-gradient(135deg, #1a1030, #120d24);
+    border: 1px solid #f0c04040;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 18px;
+    position: relative;
+  }
+  .clue-label {
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .clue-label::before { content: '🎮'; font-size: 0.8rem; }
+  .clue-text {
+    font-size: 1rem;
+    color: #d0c8f0;
+    line-height: 1.5;
+  }
+  .clue-text strong { color: var(--gold2); }
+  .clue-number {
+    position: absolute;
+    top: 10px;
+    right: 14px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem;
+    color: #554488;
+    letter-spacing: 1px;
+  }
+
+  /* KEYBOARD */
+  .keyboard {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .key-row {
+    display: flex;
+    gap: 4px;
+  }
+  .key {
+    height: 46px;
+    min-width: 36px;
+    padding: 0 8px;
+    border-radius: 7px;
+    border: none;
+    background: #231947;
+    color: #d0c8f0;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .key:hover {
+    background: #3d2470;
+    color: var(--gold);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px #3d247055;
+  }
+  .key:active { transform: scale(0.93); }
+  .key.wide { min-width: 58px; font-size: 0.75rem; }
+  .key.k-correct { background: #0a2e1a; color: var(--green); border: 1px solid var(--green); }
+  .key.k-partial { background: #1f1500; color: var(--gold); border: 1px solid var(--gold); }
+  .key.k-wrong  { background: #140d22; color: #554477; }
+
+  /* ACTIONS */
+  .actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    padding: 11px 22px;
+    border-radius: 9px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .btn-gold {
+    background: linear-gradient(135deg, #c89a10, var(--gold));
+    color: #0a0710;
+    font-weight: 700;
+    box-shadow: 0 0 16px #f0c04055;
+  }
+  .btn-gold:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--glow);
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid #3d2470;
+    color: #b09fd8;
+  }
+  .btn-ghost:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  /* RESULT BANNER */
+  .result-banner {
+    display: none;
+    background: linear-gradient(135deg, #1e1538, #2a1a4e);
+    border: 1.5px solid var(--gold);
+    border-radius: 14px;
+    padding: 18px 20px;
+    text-align: center;
+    margin-bottom: 16px;
+    animation: slideIn 0.4s ease;
+    box-shadow: var(--glow);
+  }
+  @keyframes slideIn {
+    from { transform: translateY(-12px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+  }
+  .result-banner.show { display: block; }
+  .result-icon { font-size: 2.2rem; margin-bottom: 8px; }
+  .result-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1rem;
+    color: var(--gold);
+    margin-bottom: 6px;
+    letter-spacing: 2px;
+  }
+  .result-msg { color: #c0b8e0; font-size: 0.9rem; line-height: 1.5; }
+  .result-msg a {
+    color: var(--gold2);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .result-msg a:hover { text-decoration: underline; }
+
+  /* ATTEMPT DOTS */
+  .attempts-row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #231947;
+    border: 1px solid #3d2470;
+    transition: all 0.3s;
+  }
+  .dot.used { background: #554477; }
+  .dot.correct { background: var(--green); border-color: var(--green); box-shadow: var(--glow-green); }
+  .dot.fail { background: var(--red); border-color: var(--red); }
+
+  /* RULES */
+  .rules {
+    background: #0e0a1e;
+    border: 1px solid #2a1a4e;
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 0.82rem;
+    color: #8877aa;
+    line-height: 1.7;
+  }
+  .rules strong { color: #b09fd8; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-80px);
+    background: #1e1538;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    padding: 10px 22px;
+    border-radius: 30px;
+    z-index: 9999;
+    transition: transform 0.35s ease;
+    box-shadow: var(--glow);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* PROGRESS */
+  .progress-bar-wrap {
+    height: 3px;
+    background: #231947;
+    border-radius: 2px;
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(to right, var(--purple2), var(--gold));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+</style>
+</head>
+<body>
+
+<!-- Floating slot symbols bg -->
+<div class="reel-bg" id="reelBg"></div>
+
+<header>
+  <div class="logo">SLO<span>TIME</span></div>
+  <div class="subtitle">Multiplayer Online Oyun Platformu</div>
+  <div class="tagline">✦ Oyun Dünyası Bulmacası ✦</div>
+</header>
+
+<div class="game-card">
+
+  <!-- Attempt dots -->
+  <div class="attempts-row" id="attemptDots"></div>
+
+  <!-- Progress -->
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progressBar"></div>
+  </div>
+
+  <!-- Clue -->
+  <div class="clue-box">
+    <div class="clue-label">İpucu</div>
+    <div class="clue-number" id="clueNumber">Bulmaca #1</div>
+    <div class="clue-text" id="clueText">Yükleniyor...</div>
+  </div>
+
+  <!-- Grid -->
+  <div class="section-title">Harfleri Tahmin Et</div>
+  <div class="grid-wrap" id="gameGrid"></div>
+
+  <!-- Result -->
+  <div class="result-banner" id="resultBanner">
+    <div class="result-icon" id="resultIcon"></div>
+    <div class="result-title" id="resultTitle"></div>
+    <div class="result-msg" id="resultMsg"></div>
+  </div>
+
+  <!-- Keyboard -->
+  <div class="keyboard" id="keyboard"></div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn btn-gold" id="btnSubmit" onclick="submitGuess()">✓ Onayla</button>
+    <button class="btn btn-ghost" onclick="deleteLast()">⌫ Sil</button>
+    <button class="btn btn-ghost" onclick="nextPuzzle()">↻ Yeni</button>
+  </div>
+
+  <!-- Rules -->
+  <div class="rules">
+    <strong>Nasıl Oynanır?</strong><br>
+    🟩 Yeşil = Doğru harf, doğru konum<br>
+    🟨 Sarı = Doğru harf, yanlış konum<br>
+    🟥 Kırmızı = Harf kelimede yok<br><br>
+    Her bulmacayı <strong>6 hakkın</strong> içinde çöz.<br>
+    Sarı kutular cevaptaki sabit harfleri gösterir.
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── PUZZLE DATA ───────────────────────────────────────────────────────────
+const PUZZLES = [
+  {
+    word: "TAKIM",
+    hint: "Multiplayer oyunlarda diğer oyuncularla birlikte hareket eden, ortak hedeflere koşan grup yapısı.",
+    reveal: [0] // T
+  },
+  {
+    word: "SUNUCU",
+    hint: "Online oyunlarda tüm oyuncuların bağlandığı, oyun verilerini işleyen merkezi bilgisayar.",
+    reveal: [0, 5] // S, U
+  },
+  {
+    word: "KLAN",
+    hint: "Oyuncuların kalıcı olarak bir araya gelip ortak isim altında oynadığı topluluk yapısı. Guild olarak da bilinir.",
+    reveal: [0] // K
+  },
+  {
+    word: "ARENA",
+    hint: "Oyuncuların birbirine karşı rekabetçi maçlar yaptığı özel oyun alanı veya mod.",
+    reveal: [0, 4] // A, A
+  },
+  {
+    word: "LOBIYI",
+    hint: "Oyuna başlamadan önce tüm oyuncuların bir araya gelip hazırlandığı bekleme odası.",
+    reveal: [0] // L
+  },
+  {
+    word: "MERMI",
+    hint: "FPS türü multiplayer oyunlarda silahlardan fırlayan, rakibe hasar veren nesne.",
+    reveal: [0, 4] // M, I
+  },
+  {
+    word: "GOREV",
+    hint: "Multiplayer oyunlarda takım veya bireysel olarak tamamlanan, ödül kazandıran hedef.",
+    reveal: [0] // G
+  },
+  {
+    word: "DERECE",
+    hint: "Oyuncunun rekabetçi maçlardaki başarısını gösteren sıralama puanı veya rozeti.",
+    reveal: [0, 5] // D, E
+  },
+  {
+    word: "PATCH",
+    hint: "Oyun geliştiricilerinin yayınladığı, hataları düzelten ve yeni içerik ekleyen güncelleme paketi.",
+    reveal: [0, 4] // P, H
+  },
+  {
+    word: "SPAWN",
+    hint: "Oyuncunun öldükten sonra veya oyuna ilk girişte haritada belirdiği yeniden doğuş noktası.",
+    reveal: [0, 4] // S, N
+  },
+  {
+    word: "SKOR",
+    hint: "Multiplayer maçın sonunda her oyuncunun kazandığı toplam puan değeri.",
+    reveal: [0] // S
+  },
+  {
+    word: "BASKAC",
+    hint: "FPS ve battle royale oyunlarında rakibin geçeceği noktada saklı bekleyerek ani saldırı yapma taktiği.",
+    reveal: [0, 5] // B, C
+  },
+];
+
+
+// ─── STATE ─────────────────────────────────────────────────────────────────
+let currentPuzzle, currentWord, currentAttempt, currentGuess, gameOver, maxAttempts;
+const keyStatus = {};
+
+function init(index) {
+  currentPuzzle = PUZZLES[index % PUZZLES.length];
+  currentWord   = currentPuzzle.word.toUpperCase();
+  currentAttempt = 0;
+  currentGuess   = [];
+  gameOver       = false;
+  maxAttempts    = 6;
+  Object.keys(keyStatus).forEach(k => delete keyStatus[k]);
+
+  document.getElementById('clueText').innerHTML = currentPuzzle.hint;
+  document.getElementById('clueNumber').textContent = `Bulmaca #${(index % PUZZLES.length) + 1}`;
+  document.getElementById('resultBanner').classList.remove('show');
+  document.getElementById('progressBar').style.width = '0%';
+
+  buildGrid();
+  buildDots();
+  buildKeyboard();
+
+  // Pre-fill hint cells
+  currentPuzzle.reveal.forEach(pos => {
+    const cell = getCell(0, pos);
+    cell.textContent = currentWord[pos];
+    cell.classList.add('hint-cell');
+  });
+}
+
+// ─── GRID ──────────────────────────────────────────────────────────────────
+function buildGrid() {
+  const grid = document.getElementById('gameGrid');
+  grid.innerHTML = '';
+  for (let r = 0; r < maxAttempts; r++) {
+    const row = document.createElement('div');
+    row.className = 'grid-row';
+    row.id = `row-${r}`;
+    for (let c = 0; c < currentWord.length; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.id = `cell-${r}-${c}`;
+      row.appendChild(cell);
+    }
+    grid.appendChild(row);
+  }
+}
+
+function getCell(r, c) {
+  return document.getElementById(`cell-${r}-${c}`);
+}
+
+// ─── DOTS ──────────────────────────────────────────────────────────────────
+function buildDots() {
+  const wrap = document.getElementById('attemptDots');
+  wrap.innerHTML = '';
+  for (let i = 0; i < maxAttempts; i++) {
+    const d = document.createElement('div');
+    d.className = 'dot';
+    d.id = `dot-${i}`;
+    wrap.appendChild(d);
+  }
+}
+
+// ─── KEYBOARD ──────────────────────────────────────────────────────────────
+const TR_ROWS = [
+  ['E','R','T','Y','U','I','O','P','Ğ','Ü'],
+  ['A','S','D','F','G','H','J','K','L','Ş','İ'],
+  ['SİL','Z','C','V','B','N','M','Ö','Ç','ENTER']
+];
+
+function buildKeyboard() {
+  const kb = document.getElementById('keyboard');
+  kb.innerHTML = '';
+  TR_ROWS.forEach(row => {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'key-row';
+    row.forEach(k => {
+      const btn = document.createElement('button');
+      btn.className = 'key' + (k.length > 1 ? ' wide' : '');
+      btn.textContent = k;
+      btn.id = `key-${k}`;
+      if (k === 'ENTER') btn.onclick = submitGuess;
+      else if (k === 'SİL') btn.onclick = deleteLast;
+      else btn.onclick = () => pressKey(k);
+      rowEl.appendChild(btn);
+    });
+    kb.appendChild(rowEl);
+  });
+}
+
+// ─── INPUT ─────────────────────────────────────────────────────────────────
+function pressKey(k) {
+  if (gameOver) return;
+  if (currentGuess.length >= currentWord.length) return;
+
+  // Skip hint positions
+  while (
+    currentGuess.length < currentWord.length &&
+    currentPuzzle.reveal.includes(currentGuess.length)
+  ) {
+    currentGuess.push(currentWord[currentGuess.length]);
+    getCell(currentAttempt, currentGuess.length - 1).textContent = currentWord[currentGuess.length - 1];
+  }
+  if (currentGuess.length >= currentWord.length) return;
+
+  currentGuess.push(k === 'İ' ? 'İ' : k);
+  const idx = currentGuess.length - 1;
+  const cell = getCell(currentAttempt, idx);
+  cell.textContent = k;
+  cell.style.transform = 'scale(1.15)';
+  setTimeout(() => cell.style.transform = '', 120);
+}
+
+function deleteLast() {
+  if (gameOver) return;
+  if (currentGuess.length === 0) return;
+  const last = currentGuess.length - 1;
+  if (currentPuzzle.reveal.includes(last)) return;
+  currentGuess.pop();
+  const cell = getCell(currentAttempt, last);
+  cell.textContent = '';
+  cell.className = 'cell';
+}
+
+// ─── SUBMIT ────────────────────────────────────────────────────────────────
+function submitGuess() {
+  if (gameOver) return;
+
+  // Fill remaining hint cells
+  for (let i = 0; i < currentWord.length; i++) {
+    if (currentPuzzle.reveal.includes(i) && !currentGuess[i]) {
+      currentGuess[i] = currentWord[i];
+    }
+  }
+
+  // Pad with empty if not full
+  while (currentGuess.length < currentWord.length) {
+    currentGuess.push('');
+  }
+
+  if (currentGuess.filter(c => c !== '').length < currentWord.length) {
+    showToast('Tüm harfleri doldur!');
+    for (let i = 0; i < currentWord.length; i++) {
+      if (!currentGuess[i]) {
+        getCell(currentAttempt, i).classList.add('empty-anim');
+        setTimeout(() => getCell(currentAttempt, i).classList.remove('empty-anim'), 400);
+      }
+    }
+    return;
+  }
+
+  const guess = currentGuess.join('');
+  const result = evaluate(guess, currentWord);
+
+  // Animate cells
+  result.forEach((r, i) => {
+    const cell = getCell(currentAttempt, i);
+    setTimeout(() => {
+      cell.classList.add('flip');
+      setTimeout(() => {
+        cell.className = 'cell ' + (r === 2 ? 'correct' : r === 1 ? 'partial' : 'wrong');
+        cell.textContent = guess[i];
+      }, 250);
+    }, i * 80);
+  });
+
+  // Update keyboard
+  setTimeout(() => {
+    for (let i = 0; i < currentWord.length; i++) {
+      const k = guess[i];
+      const st = result[i] === 2 ? 'k-correct' : result[i] === 1 ? 'k-partial' : 'k-wrong';
+      const prev = keyStatus[k] || 0;
+      if (result[i] > prev) {
+        keyStatus[k] = result[i];
+        const el = document.querySelector(`#key-${k}`);
+        if (el) el.className = 'key ' + st + (k.length > 1 ? ' wide' : '');
+      }
+    }
+  }, currentWord.length * 80 + 300);
+
+  // Dot
+  setTimeout(() => {
+    const dot = document.getElementById(`dot-${currentAttempt}`);
+    const win = result.every(r => r === 2);
+    dot.className = 'dot ' + (win ? 'correct' : 'used');
+    if (currentAttempt === maxAttempts - 1 && !win) dot.className = 'dot fail';
+  }, currentWord.length * 80 + 200);
+
+  const win = result.every(r => r === 2);
+  currentAttempt++;
+  currentGuess = [];
+
+  // Progress
+  const pct = Math.round((currentAttempt / maxAttempts) * 100);
+  document.getElementById('progressBar').style.width = pct + '%';
+
+  setTimeout(() => {
+    if (win) {
+      gameOver = true;
+      showResult(true, currentAttempt);
+    } else if (currentAttempt >= maxAttempts) {
+      gameOver = true;
+      showResult(false, currentAttempt);
+    } else {
+      // Pre-fill next row hints
+      currentPuzzle.reveal.forEach(pos => {
+        const cell = getCell(currentAttempt, pos);
+        cell.textContent = currentWord[pos];
+        cell.classList.add('hint-cell');
+      });
+    }
+  }, currentWord.length * 80 + 500);
+}
+
+function evaluate(guess, word) {
+  const res = Array(word.length).fill(0);
+  const wCount = {};
+  for (const c of word) wCount[c] = (wCount[c] || 0) + 1;
+  // Correct pass
+  for (let i = 0; i < word.length; i++) {
+    if (guess[i] === word[i]) { res[i] = 2; wCount[guess[i]]--; }
+  }
+  // Partial pass
+  for (let i = 0; i < word.length; i++) {
+    if (res[i] === 2) continue;
+    if (wCount[guess[i]] > 0) { res[i] = 1; wCount[guess[i]]--; }
+  }
+  return res;
+}
+
+// ─── RESULT ────────────────────────────────────────────────────────────────
+const msgs = ["Efsanevi!", "Mükemmel!", "Harika!", "Çok iyi!", "İyi iş!", "Son anda!"];
+
+function showResult(win, attempts) {
+  const banner = document.getElementById('resultBanner');
+  banner.classList.add('show');
+  if (win) {
+    document.getElementById('resultIcon').textContent = '🏆';
+    document.getElementById('resultTitle').textContent = msgs[attempts - 1] || 'Kazandın!';
+    document.getElementById('resultMsg').innerHTML =
+      `Kelimeyi <strong style="color:var(--green)">${attempts}. denemede</strong> buldun!<br>
+      Slotime'da oynamak için <a href="#" onclick="return false">platforma katıl</a> ve oyuna gir.`;
+  } else {
+    document.getElementById('resultIcon').textContent = '💔';
+    document.getElementById('resultTitle').textContent = 'Hakkın Bitti!';
+    document.getElementById('resultMsg').innerHTML =
+      `Doğru kelime: <strong style="color:var(--gold)">${currentWord}</strong><br>
+      Bir dahaki sefere! <a href="#" onclick="return false">Slotime'a katıl</a> ve oynamaya başla.`;
+  }
+}
+
+// ─── TOAST ─────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ─── NEXT PUZZLE ───────────────────────────────────────────────────────────
+let puzzleIndex = 0;
+function nextPuzzle() {
+  puzzleIndex = (puzzleIndex + 1) % PUZZLES.length;
+  init(puzzleIndex);
+}
+
+// ─── KEYBOARD EVENTS ───────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter')     { submitGuess(); return; }
+  if (e.key === 'Backspace') { deleteLast(); return; }
+  const k = e.key.toUpperCase();
+  const validKeys = 'ABCDEFGHIİJKLMNOÖPRSTUÜVYZÇŞĞ';
+  if (k.length === 1 && validKeys.includes(k)) pressKey(k);
+});
+
+// ─── FLOATING SYMBOLS BG ───────────────────────────────────────────────────
+function buildBg() {
+  const syms = ['🎮','🕹️','⚔️','🏆','💥','🎯','🛡️','🌟','👾','🔫','🗡️','💫'];
+  const bg = document.getElementById('reelBg');
+  for (let i = 0; i < 20; i++) {
+    const s = document.createElement('span');
+    s.textContent = syms[Math.floor(Math.random() * syms.length)];
+    s.style.left = Math.random() * 100 + 'vw';
+    s.style.animationDuration = (12 + Math.random() * 18) + 's';
+    s.style.animationDelay = (Math.random() * 15) + 's';
+    bg.appendChild(s);
+  }
+}
+
+// ─── START ─────────────────────────────────────────────────────────────────
+buildBg();
+init(0);
+</script>
+</body>
+</html>
